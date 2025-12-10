@@ -47,7 +47,9 @@ static void refr_configured_layer(lv_layer_t * layer);
 static void refr_obj_and_children(lv_layer_t * layer, lv_obj_t * top_obj);
 static uint32_t get_max_row(lv_display_t * disp, int32_t area_w, int32_t area_h);
 static void draw_buf_flush(lv_display_t * disp);
+static void draw_buf_flush_feed_sub_area(lv_display_t * disp, const lv_area_t * area_p);
 static void call_flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
+static void call_flush_feed_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
 static void wait_for_flushing(lv_display_t * disp);
 static lv_result_t layer_get_area(lv_layer_t * layer, lv_obj_t * obj, lv_layer_type_t layer_type,
                                   lv_area_t * layer_area_out, lv_area_t * obj_draw_size_out);
@@ -776,7 +778,8 @@ static void refr_invalid_areas(void)
         disp_refr->last_part = 0;
 
         lv_area_t inv_a = disp_refr->inv_areas[i];
-        if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL) {
+        if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL ||
+           disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH) {
             int32_t w = lv_area_get_width(&inv_a);
             int32_t h = lv_area_get_height(&inv_a);
 
@@ -788,6 +791,13 @@ static void refr_invalid_areas(void)
             do {
                 int32_t max_row = get_max_row(disp_refr, w, h);
 
+                if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH && max_row == 0) {
+                    /* Batching ends when there's no more space left in the draw buffer. get_max_row() will
+                     * consider the available draw buffer space in bytes when calculating max_row. */
+                    draw_buf_flush(disp_refr);
+                    continue;
+                }
+
                 /* Create sub area */
                 sub_area.x1 = inv_a.x1;
                 sub_area.x2 = inv_a.x2;
@@ -797,12 +807,29 @@ static void refr_invalid_areas(void)
                 if(sub_area.y2 > inv_a.y2) sub_area.y2 = inv_a.y2;
                 if(sub_area.y2 == inv_a.y2) disp_refr->last_part = 1;
 
+                if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH)
+                    draw_buf_flush_feed_sub_area(disp_refr, &sub_area);
+
                 refr_area(&sub_area, y_off);
+
+                /* In partial mode flush is performed as soon as the area has been rendered */
+                if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL)
+                    draw_buf_flush(disp_refr);
+
                 y_off += lv_area_get_height(&sub_area);
-                draw_buf_flush(disp_refr);
                 row += max_row;
 
+                if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH)
+                    /* Shifts the draw_buf memory to the end of the rendered area */
+                    lv_draw_buf_shift_by_area(disp_refr->buf_act, &sub_area);
+
             } while(disp_refr->last_part == false);
+
+            if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH &&
+               disp_refr->last_area && disp_refr->last_part) {
+                /* Batching ends naturally when there are no more invalid areas to be rendered. */
+                draw_buf_flush(disp_refr);
+            }
         }
         else if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_FULL ||
                 disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_DIRECT) {
@@ -846,7 +873,8 @@ static void refr_area(const lv_area_t * area_p, int32_t y_offset)
     layer->phy_clip_area = *area_p;
     layer->partial_y_offset = y_offset;
 
-    if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL) {
+    if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL ||
+       disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH) {
         /*In partial mode render this area to the buffer*/
         layer->buf_area = *area_p;
         layer_reshape_draw_buf(layer, LV_STRIDE_AUTO);
@@ -1379,6 +1407,11 @@ static void draw_buf_flush(lv_display_t * disp)
     if(disp->flush_cb) {
         call_flush_cb(disp, &disp->refreshed_area, layer->draw_buf->data);
     }
+
+    if(disp_refr->render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH)
+        /* Restores the initial value of the draw_buf memory pointer */
+        lv_draw_buf_init_memory_addr(disp->buf_act);
+
     /*If there are 2 buffers swap them. With direct mode swap only on the last area*/
     if(lv_display_is_double_buffered(disp) && (disp->render_mode != LV_DISPLAY_RENDER_MODE_DIRECT || flushing_last)) {
         if(disp->buf_act == disp->buf_1) {
@@ -1390,6 +1423,20 @@ static void draw_buf_flush(lv_display_t * disp)
         else {
             disp->buf_act = disp->buf_1;
         }
+    }
+}
+
+static void draw_buf_flush_feed_sub_area(lv_display_t * disp, const lv_area_t * area_p)
+{
+    lv_layer_t * layer = disp->layer_head;
+
+    while(layer->draw_task_head) {
+        lv_draw_dispatch_wait_for_request();
+        lv_draw_dispatch();
+    }
+
+    if(disp->flush_feed_cb) {
+        call_flush_feed_cb(disp, area_p, disp_refr->buf_act->data);
     }
 }
 
@@ -1417,6 +1464,21 @@ static void call_flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t *
     lv_display_send_event(disp, LV_EVENT_FLUSH_FINISH, &offset_area);
 
     LV_PROFILER_REFR_END;
+}
+
+static void call_flush_feed_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map)
+{
+    LV_TRACE_REFR("Calling flush_feed_cb on (%d;%d)(%d;%d) area with %p image pointer",
+                  (int)area->x1, (int)area->y1, (int)area->x2, (int)area->y2, (void *)px_map);
+
+    lv_area_t offset_area = {
+        .x1 = area->x1 + disp->offset_x,
+        .y1 = area->y1 + disp->offset_y,
+        .x2 = area->x2 + disp->offset_x,
+        .y2 = area->y2 + disp->offset_y
+    };
+
+    disp->flush_feed_cb(disp, &offset_area, px_map);
 }
 
 static void wait_for_flushing(lv_display_t * disp)

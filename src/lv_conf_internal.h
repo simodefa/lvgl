@@ -3939,21 +3939,28 @@
                 #define LV_X11_RENDER_MODE_PARTIAL 0
             #endif
         #else
-            #define LV_X11_RENDER_MODE_PARTIAL 1  /**< Partial render mode (preferred) */
+            #define LV_X11_RENDER_MODE_PARTIAL       1  /**< Partial render mode (preferred) */
+        #endif
+    #endif
+    #ifndef LV_X11_RENDER_MODE_PARTIAL_BATCH
+        #ifdef CONFIG_LV_X11_RENDER_MODE_PARTIAL_BATCH
+            #define LV_X11_RENDER_MODE_PARTIAL_BATCH CONFIG_LV_X11_RENDER_MODE_PARTIAL_BATCH
+        #else
+            #define LV_X11_RENDER_MODE_PARTIAL_BATCH 0  /**< Partial render mode batched */
         #endif
     #endif
     #ifndef LV_X11_RENDER_MODE_DIRECT
         #ifdef CONFIG_LV_X11_RENDER_MODE_DIRECT
             #define LV_X11_RENDER_MODE_DIRECT CONFIG_LV_X11_RENDER_MODE_DIRECT
         #else
-            #define LV_X11_RENDER_MODE_DIRECT  0  /**< Direct render mode */
+            #define LV_X11_RENDER_MODE_DIRECT        0  /**< Direct render mode */
         #endif
     #endif
     #ifndef LV_X11_RENDER_MODE_FULL
         #ifdef CONFIG_LV_X11_RENDER_MODE_FULL
             #define LV_X11_RENDER_MODE_FULL CONFIG_LV_X11_RENDER_MODE_FULL
         #else
-            #define LV_X11_RENDER_MODE_FULL    0  /**< Full render mode */
+            #define LV_X11_RENDER_MODE_FULL          0  /**< Full render mode */
         #endif
     #endif
 #endif

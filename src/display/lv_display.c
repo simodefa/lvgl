@@ -476,7 +476,7 @@ void lv_display_set_buffers(lv_display_t * disp, void * buf1, void * buf2, uint3
     LV_ASSERT_FORMAT_MSG(buf2 == NULL || buf2 == lv_draw_buf_align(buf2, cf), "buf2 is not aligned: %p", buf2);
 
     uint32_t stride = lv_draw_buf_width_to_stride(w, cf);
-    if(render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL) {
+    if(render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL || render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH) {
         LV_ASSERT_FORMAT_MSG(stride != 0, "stride is 0, check your color format %d and width: %" LV_PRIu32, cf, w);
         /* for partial mode, we calculate the height based on the buf_size and stride */
         h = buf_size / stride;
@@ -510,7 +510,7 @@ void lv_display_set_buffers_with_stride(lv_display_t * disp, void * buf1, void *
     uint32_t h = lv_display_get_original_vertical_resolution(disp);
     LV_ASSERT_MSG(w != 0 && h != 0, "display resolution is 0");
 
-    if(render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL) {
+    if(render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL || render_mode == LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH) {
         /* for partial mode, we calculate the height based on the buf_size and stride */
         h = buf_size / stride;
         LV_ASSERT_MSG(h != 0, "the buffer is too small");
@@ -533,6 +533,14 @@ void lv_display_set_render_mode(lv_display_t * disp, lv_display_render_mode_t re
     if(disp == NULL) disp = lv_display_get_default();
     if(disp == NULL) return;
     disp->render_mode = render_mode;
+}
+
+void lv_display_set_flush_feed_cb(lv_display_t * disp, lv_display_flush_feed_cb_t flush_feed_cb)
+{
+    if(disp == NULL) disp = lv_display_get_default();
+    if(disp == NULL) return;
+
+    disp->flush_feed_cb = flush_feed_cb;
 }
 
 void lv_display_set_flush_cb(lv_display_t * disp, lv_display_flush_cb_t flush_cb)

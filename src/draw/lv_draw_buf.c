@@ -237,10 +237,12 @@ lv_result_t lv_draw_buf_init(lv_draw_buf_t * draw_buf, uint32_t w, uint32_t h, l
     header->flags = 0;
     header->magic = LV_IMAGE_HEADER_MAGIC;
 
+    draw_buf->data_start = data;
     draw_buf->data = data;
     draw_buf->unaligned_data = data;
     draw_buf->handlers = &default_handlers;
     draw_buf->data_size = data_size;
+    draw_buf->data_size_tot = data_size;
     if(lv_draw_buf_align(data, cf) != draw_buf->unaligned_data) {
         LV_LOG_WARN("Data is not aligned, ignored");
     }
@@ -342,6 +344,34 @@ lv_draw_buf_t * lv_draw_buf_reshape(lv_draw_buf_t * draw_buf, lv_color_format_t 
 
     LV_PROFILER_DRAW_END;
     return draw_buf;
+}
+
+lv_draw_buf_t * lv_draw_buf_init_memory_addr(lv_draw_buf_t * draw_buf)
+{
+    draw_buf->data = draw_buf->data_start;
+    draw_buf->data_size = draw_buf->data_size_tot;
+
+    return draw_buf;
+}
+
+lv_draw_buf_t * lv_draw_buf_shift_by_area(lv_draw_buf_t * buf, lv_area_t * area)
+{
+    uint32_t stride = buf->header.stride;
+    if(stride == 0) {
+        stride = lv_draw_buf_width_to_stride(lv_area_get_width(area), buf->header.cf);
+    }
+    uint32_t area_size = LV_ALIGN_UP(stride * lv_area_get_height(area), LV_DRAW_BUF_ALIGN);
+
+    if(area_size >= buf->data_size) {
+        buf->data = buf->data_start;
+        buf->data_size = 0u;
+    }
+    else {
+        buf->data += area_size;
+        buf->data_size -= area_size;
+    }
+
+    return buf;
 }
 
 void lv_draw_buf_destroy(lv_draw_buf_t * draw_buf)

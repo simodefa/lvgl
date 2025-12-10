@@ -1777,6 +1777,9 @@ menu "LVGL configuration"
 			config LV_SDL_RENDER_MODE_PARTIAL
 				bool "Use the buffer(s) to render the screen is smaller parts"
 
+			config LV_SDL_RENDER_MODE_PARTIAL_BATCHED
+				bool "Use the buffer(s) to render the screen is smaller parts, in a batched manner (render-all then flush-all)"
+
 			config LV_SDL_RENDER_MODE_DIRECT
 				bool "Only the changed areas will be updated with 2 screen sized buffers"
 
@@ -1862,6 +1865,13 @@ menu "LVGL configuration"
 				help
 					Use the buffer(s) to render the screen is smaller parts. This way the buffers can be smaller then the display to save RAM.
 					Appr. 1/10 screen size buffer(s) are used.
+			config LV_X11_RENDER_MODE_PARTIAL_BATCH
+				bool "Partial render mode batched"
+				help
+					Use the buffer(s) to render the screen in smaller parts. This way the buffers can be smaller then the display to save RAM.
+					Appr. 1/10 screen size buffer(s) are used.
+					Batch mode will render as many dirty areas as possible in the current partial buffer.
+					Flush stage will need to accumulate the data of the dirty areas, in order to be able to flush all of them at once when triggered.
 			config LV_X11_RENDER_MODE_DIRECT
 				bool "Direct render mode"
 				help
@@ -1924,6 +1934,14 @@ menu "LVGL configuration"
 				bool "Partial mode"
 				help
 					Use the buffer(s) to render the screen is smaller parts. This way the buffers can be smaller then the display to save RAM. At least 1/10 screen size buffer(s) are recommended.
+
+			config LV_LINUX_FBDEV_RENDER_MODE_PARTIAL_BATCH
+				bool "Partial mode batched"
+				help
+					Use the buffer(s) to render the screen in smaller parts. This way the buffers can be smaller then the display to save RAM.
+					Appr. 1/10 screen size buffer(s) are used.
+					Batch mode will render as many dirty areas as possible in the current partial buffer.
+					Flush stage will need to accumulate the data of the dirty areas, in order to be able to flush all of them at once when triggered.
 
 			config LV_LINUX_FBDEV_RENDER_MODE_DIRECT
 				bool "Direct mode"

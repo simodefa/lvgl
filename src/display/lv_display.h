@@ -46,6 +46,15 @@ typedef enum {
     LV_DISPLAY_RENDER_MODE_PARTIAL,
 
     /**
+     * Use the buffer(s) to render the screen in smaller parts.
+     * This way the buffers can be smaller then the display to save RAM. At least 1/10 screen size buffer(s) are recommended.
+     * Batch mode will render as many dirty areas as possible in the current partial buffer.
+     * Flush stage will need to accumulate the data of the dirty areas, in order to be able to flush all of them at once when
+     * triggered.
+     */
+    LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH,
+
+    /**
      * The buffer(s) has to be screen sized and LVGL will render into the correct location of the buffer.
      * This way the buffer always contain the whole image. Only the changed ares will be updated.
      * With 2 buffers the buffers' content are kept in sync automatically and in flush_cb only address change is required.
@@ -79,6 +88,7 @@ typedef enum {
 } lv_screen_load_anim_t;
 
 typedef void (*lv_display_flush_cb_t)(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
+typedef void (*lv_display_flush_feed_cb_t)(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
 typedef void (*lv_display_flush_wait_cb_t)(lv_display_t * disp);
 
 /**********************
@@ -262,7 +272,7 @@ int32_t lv_display_get_dpi(const lv_display_t * disp);
  * @param buf1              first buffer
  * @param buf2              second buffer (can be `NULL`)
  * @param buf_size          buffer size in byte
- * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/DIRECT/FULL
+ * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/PARTIAL_BATCH/DIRECT/FULL
  */
 void lv_display_set_buffers(lv_display_t * disp, void * buf1, void * buf2, uint32_t buf_size,
                             lv_display_render_mode_t render_mode);
@@ -277,7 +287,7 @@ void lv_display_set_buffers(lv_display_t * disp, void * buf1, void * buf2, uint3
  * @param buf2              second buffer (can be `NULL`)
  * @param buf_size          buffer size in byte
  * @param stride            buffer stride in bytes
- * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/DIRECT/FULL
+ * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/PARTIAL_BATCH/DIRECT/FULL
  */
 void lv_display_set_buffers_with_stride(lv_display_t * disp, void * buf1, void * buf2, uint32_t buf_size,
                                         uint32_t stride, lv_display_render_mode_t render_mode);
@@ -302,9 +312,18 @@ void lv_display_set_3rd_draw_buffer(lv_display_t * disp, lv_draw_buf_t * buf3);
 /**
  * Set display render mode
  * @param disp              pointer to a display
- * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/DIRECT/FULL
+ * @param render_mode       LV_DISPLAY_RENDER_MODE_PARTIAL/PARTIAL_BATCH/DIRECT/FULL
  */
 void lv_display_set_render_mode(lv_display_t * disp, lv_display_render_mode_t render_mode);
+
+/**
+ * Set the flush feed callback (optional, only for PARTIAL_BATCH mode).
+ * This callback is called for each sub-area before rendering to allow the display driver
+ * to prepare for receiving rendered data.
+ * @param disp              pointer to a display
+ * @param flush_feed_cb     the flush feed callback
+ */
+void lv_display_set_flush_feed_cb(lv_display_t * disp, lv_display_flush_feed_cb_t flush_feed_cb);
 
 /**
  * Set the flush callback which will be called to copy the rendered image to the display.
