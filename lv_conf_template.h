@@ -1226,9 +1226,10 @@
     #define LV_X11_DIRECT_EXIT         1  /**< Exit application when all X11 windows have been closed */
     #define LV_X11_DOUBLE_BUFFER       1  /**< Use double buffers for rendering */
     /* Select only 1 of the following render modes (LV_X11_RENDER_MODE_PARTIAL preferred!). */
-    #define LV_X11_RENDER_MODE_PARTIAL 1  /**< Partial render mode (preferred) */
-    #define LV_X11_RENDER_MODE_DIRECT  0  /**< Direct render mode */
-    #define LV_X11_RENDER_MODE_FULL    0  /**< Full render mode */
+    #define LV_X11_RENDER_MODE_PARTIAL       1  /**< Partial render mode (preferred) */
+    #define LV_X11_RENDER_MODE_PARTIAL_BATCH 0  /**< Partial render mode batched */
+    #define LV_X11_RENDER_MODE_DIRECT        0  /**< Direct render mode */
+    #define LV_X11_RENDER_MODE_FULL          0  /**< Full render mode */
 #endif
 
 /** Use Wayland to open a window and handle input on Linux or BSD desktops */

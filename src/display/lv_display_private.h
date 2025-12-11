@@ -74,6 +74,9 @@ struct _lv_display_t {
      * called when finished*/
     lv_display_flush_cb_t flush_cb;
 
+    /** Optional, only if display render mode is LV_DISPLAY_RENDER_MODE_PARTIAL_BATCH */
+    lv_display_flush_feed_cb_t flush_feed_cb;
+
     /**
      * Used to wait while flushing is ready.
      * It can do any complex logic to wait, including semaphores, mutexes, polling flags, etc.

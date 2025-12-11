@@ -91,7 +91,9 @@ typedef uint32_t (*lv_draw_buf_width_to_stride_cb_t)(uint32_t w, lv_color_format
 struct _lv_draw_buf_t {
     lv_image_header_t header;
     uint32_t data_size;       /**< Total buf size in bytes */
+    uint32_t data_size_tot;   /**< Original total buffer size in bytes */
     uint8_t * data;
+    uint8_t * data_start;     /**< Original data pointer before any shifts */
     void * unaligned_data;    /**< Unaligned address of `data`, used internally by lvgl */
     const lv_draw_buf_handlers_t * handlers; /**< draw buffer alloc/free ops. */
 };
@@ -270,6 +272,23 @@ lv_result_t lv_draw_buf_init(lv_draw_buf_t * draw_buf, uint32_t w, uint32_t h, l
  */
 lv_draw_buf_t * lv_draw_buf_reshape(lv_draw_buf_t * draw_buf, lv_color_format_t cf, uint32_t w, uint32_t h,
                                     uint32_t stride);
+
+/**
+ * Restore the draw buffer memory pointer to its initial position.
+ * Used in PARTIAL_BATCH render mode to reset buffer after flushing.
+ * @param draw_buf  pointer to a draw buffer
+ * @return          pointer to the draw buffer
+ */
+lv_draw_buf_t * lv_draw_buf_init_memory_addr(lv_draw_buf_t * draw_buf);
+
+/**
+ * Shift the draw buffer memory pointer by the size of the given area.
+ * Used in PARTIAL_BATCH render mode to advance buffer pointer after rendering an area.
+ * @param buf       pointer to a draw buffer
+ * @param area      pointer to the area that was just rendered
+ * @return          pointer to the draw buffer
+ */
+lv_draw_buf_t * lv_draw_buf_shift_by_area(lv_draw_buf_t * buf, lv_area_t * area);
 
 /**
  * Destroy a draw buf by freeing the actual buffer if it's marked as LV_IMAGE_FLAGS_ALLOCATED in header.
